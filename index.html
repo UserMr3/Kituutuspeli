@@ -16,7 +16,7 @@
             margin: 0 auto;
             background: #222;
         }
-        #game-over {
+        #start-screen, #game-over {
             display: none;
             position: fixed;
             top: 50%;
@@ -28,7 +28,10 @@
             padding: 20px;
             border-radius: 10px;
         }
-        #restart {
+        #start-screen {
+            display: block;
+        }
+        button {
             background: #00a86b;
             color: white;
             border: none;
@@ -40,6 +43,17 @@
 </head>
 <body>
     <canvas id="gameCanvas"></canvas>
+    <div id="start-screen">
+        <h1>Boglen Kituutuspeli</h1>
+        <p>Pidä kituutusprosentti korkealla!</p>
+        <p>Ohjeet:</p>
+        <ul style="text-align: left;">
+            <li>Käytä nuolinäppäimiä (<strong>Vasen</strong>/<strong>Oikea</strong>) liikkuaksesi.</li>
+            <li>Väistä punaisia turhakkeita ja kerää vihreitä tuloja!</li>
+            <li>Turhakkeet vähentävät kituutusprosenttia, tulot lisäävät sitä.</li>
+        </ul>
+        <button id="start-game">Aloita peli</button>
+    </div>
     <div id="game-over">
         <h1>Kituutus epäonnistui!</h1>
         <p>Säästöt putosivat liian alas. Yritä uudelleen!</p>
@@ -60,14 +74,15 @@
             width: 50,
             height: 50,
             color: "#00a86b",
-            speed: 7
+            speed: 8
         };
 
         // Game variables
         let kituutusProsentti = 100;
         let isGameOver = false;
         let turhakkeet = [];
-        let turhakeInterval = 1000;
+        let tulot = [];
+        const spawnInterval = 600; // Faster spawn for both turhakkeet and tulot
 
         // Turhake object
         function createTurhake() {
@@ -77,16 +92,31 @@
                 width: 30,
                 height: 30,
                 color: "#ff4d4d",
-                speed: Math.random() * 3 + 2
+                speed: Math.random() * 3 + 4
             };
         }
 
-        // Spawn turhakkeet
+        // Tulo object
+        function createTulo() {
+            return {
+                x: Math.random() * (canvas.width - 30),
+                y: -30,
+                width: 30,
+                height: 30,
+                color: "#4CAF50",
+                speed: Math.random() * 3 + 4
+            };
+        }
+
+        // Spawn turhakkeet and tulot
         setInterval(() => {
             if (!isGameOver) {
                 turhakkeet.push(createTurhake());
+                if (Math.random() > 0.5) {
+                    tulot.push(createTulo());
+                }
             }
-        }, turhakeInterval);
+        }, spawnInterval);
 
         // Handle keyboard input
         const keys = {
@@ -108,11 +138,11 @@
             if (keys.ArrowLeft && bogle.x > 0) bogle.x -= bogle.speed;
             if (keys.ArrowRight && bogle.x + bogle.width < canvas.width) bogle.x += bogle.speed;
 
-            // Move turhakkeet
+            // Move turhakkeet and check collisions
             turhakkeet.forEach((turhake, index) => {
                 turhake.y += turhake.speed;
 
-                // Check collision
+                // Collision with Bogle
                 if (
                     bogle.x < turhake.x + turhake.width &&
                     bogle.x + bogle.width > turhake.x &&
@@ -126,6 +156,28 @@
                 // Remove off-screen turhakkeet
                 if (turhake.y > canvas.height) {
                     turhakkeet.splice(index, 1);
+                }
+            });
+
+            // Move tulot and check collisions
+            tulot.forEach((tulo, index) => {
+                tulo.y += tulo.speed;
+
+                // Collision with Bogle
+                if (
+                    bogle.x < tulo.x + tulo.width &&
+                    bogle.x + bogle.width > tulo.x &&
+                    bogle.y < tulo.y + tulo.height &&
+                    bogle.height + bogle.y > tulo.y
+                ) {
+                    kituutusProsentti += 5;
+                    if (kituutusProsentti > 100) kituutusProsentti = 100; // Cap at 100%
+                    tulot.splice(index, 1);
+                }
+
+                // Remove off-screen tulot
+                if (tulo.y > canvas.height) {
+                    tulot.splice(index, 1);
                 }
             });
 
@@ -150,6 +202,12 @@
                 ctx.fillRect(turhake.x, turhake.y, turhake.width, turhake.height);
             });
 
+            // Draw tulot
+            tulot.forEach((tulo) => {
+                ctx.fillStyle = tulo.color;
+                ctx.fillRect(tulo.x, tulo.y, tulo.width, tulo.height);
+            });
+
             // Draw kituutusprosentti
             ctx.fillStyle = "white";
             ctx.font = "20px Arial";
@@ -165,17 +223,21 @@
             }
         }
 
+        // Start game
+        document.getElementById("start-game").addEventListener("click", () => {
+            document.getElementById("start-screen").style.display = "none";
+            gameLoop();
+        });
+
         // Restart game
         document.getElementById("restart").addEventListener("click", () => {
             kituutusProsentti = 100;
             isGameOver = false;
             turhakkeet = [];
+            tulot = [];
             document.getElementById("game-over").style.display = "none";
             gameLoop();
         });
-
-        // Start game
-        gameLoop();
     </script>
 </body>
 </html>
